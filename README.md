@@ -14,7 +14,7 @@ Choose a level:
 |-------|-----------|-------|
 | 0 | Multiply | up to 12×12 |
 | 1 | Multiply & divide | up to 12×12 |
-| 2 | Multiply & divide | up to 24×24 |
+| 2 | Multiply | up to 24×24 |
 
 Each session is 144 questions. The target is to finish them all within 5 minutes. Questions speed up as you progress.
 

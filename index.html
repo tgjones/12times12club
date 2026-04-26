@@ -354,7 +354,7 @@
       <button class="level-btn" data-level="2">
         <div class="level-num">Level 2</div>
         <div class="level-divider"></div>
-        <strong>Multiply &amp; divide</strong>
+        <strong>Multiply</strong>
         <span>up to 24 × 24</span>
       </button>
     </div>
@@ -369,7 +369,7 @@
   <div id="progress"><b>0</b> / 144</div>
   <div id="answer-wrap">
     <div id="answer-box">_</div>
-    <div id="answer-hint">TYPE YOUR ANSWER · BACKSPACE TO CORRECT</div>
+    <div id="answer-hint">TYPE YOUR ANSWER · BACKSPACE TO CORRECT · SPACE TO SKIP</div>
   </div>
   <button id="back-to-menu">← Menu</button>
 </div>
@@ -464,6 +464,7 @@ let questions   = [];
 let qIdx        = 0;
 let typed       = '';
 let correctCnt  = 0;
+let skippedCnt  = 0;
 let wrongTries  = 0;
 let startMs     = 0;
 let elapsed     = 0;
@@ -499,7 +500,7 @@ function buildPool(maxN, ops, minOne = 1) {
 const LEVEL_CFG = [
   { label: 'LEVEL 0', max: 12, ops: ['×'] },
   { label: 'LEVEL 1', max: 12, ops: ['×', '÷'] },
-  { label: 'LEVEL 2', max: 24, ops: ['×', '÷'], minOne: 13 },
+  { label: 'LEVEL 2', max: 24, ops: ['×'], minOne: 13 },
 ];
 
 // ── 3D text mesh ───────────────────────────────────────────────────────────────
@@ -595,7 +596,7 @@ function updateHUD() {
   const timerEl = $('timer');
   timerEl.textContent = fmtTime(rem);
   timerEl.classList.toggle('urgent', rem < 60);
-  $('progress').innerHTML = `<b>${correctCnt}</b> / ${TOTAL_Q}`;
+  $('progress').innerHTML = `<b>${correctCnt}</b> / ${TOTAL_Q - skippedCnt}`;
 }
 
 function refreshAnswerBox() {
@@ -622,6 +623,7 @@ function startGame(lvl) {
   questions  = buildPool(LEVEL_CFG[lvl].max, LEVEL_CFG[lvl].ops, LEVEL_CFG[lvl].minOne || 1);
   qIdx       = 0;
   correctCnt = 0;
+  skippedCnt = 0;
   wrongTries = 0;
   elapsed    = 0;
   startMs    = performance.now();
@@ -639,7 +641,7 @@ function endGame() {
   dyingMeshes.forEach(d => { scene.remove(d.m); d.m.geometry.dispose(); d.m.material.dispose(); });
   dyingMeshes = [];
 
-  const success = correctCnt === TOTAL_Q && elapsed <= TIME_LIMIT;
+  const success = correctCnt === TOTAL_Q - skippedCnt && elapsed <= TIME_LIMIT;
   const title   = $('results-title');
 
   if (success) {
@@ -654,7 +656,8 @@ function endGame() {
   }
 
   $('stats-grid').innerHTML = `
-    <div>Completed</div>      <div class="val">${correctCnt} / ${TOTAL_Q}</div>
+    <div>Completed</div>      <div class="val">${correctCnt} / ${TOTAL_Q - skippedCnt}</div>
+    ${skippedCnt > 0 ? `<div>Skipped</div> <div class="val">${skippedCnt}</div>` : ''}
     <div>Wrong attempts</div> <div class="val">${wrongTries}</div>
     <div>Time</div>           <div class="val">${fmtTime(elapsed)}</div>
   `;
@@ -679,6 +682,20 @@ function endGame() {
 document.addEventListener('keydown', e => {
   if (state !== 'playing') return;
   e.preventDefault();
+
+  if (e.key === ' ') {
+    skippedCnt++;
+    qIdx++;
+    if (mesh) {
+      mesh.material.color.set(0x556677);
+      mesh.material.emissive.set(0x111122);
+    }
+    releaseMeshFalling();
+    if (qIdx >= TOTAL_Q) { endGame(); return; }
+    spawnNext();
+    updateHUD();
+    return;
+  }
 
   if (e.key === 'Backspace') {
     typed = typed.slice(0, -1);
