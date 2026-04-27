@@ -132,11 +132,11 @@
       border: 1px solid rgba(255,153,204,.2);
       border-radius: 18px;
       color: #ff99cc;
-      padding: 1.8rem 2rem 1.7rem;
+      padding: 1.8rem 1.6rem 1.7rem;
       font-family: inherit;
       cursor: pointer;
       text-align: center;
-      min-width: 175px;
+      min-width: 155px;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       transition: border-color .25s, box-shadow .25s, background .25s, transform .22s;
@@ -340,25 +340,37 @@
     <p class="choose-label">CHOOSE YOUR LEVEL</p>
     <div class="level-grid">
       <button class="level-btn" data-level="0">
-        <div class="level-num">Level 0</div>
+        <div class="level-num">36</div>
         <div class="level-divider"></div>
         <strong>Multiply</strong>
-        <span>up to 12 × 12</span>
+        <span>36 questions<br>up to 12 × 12</span>
       </button>
       <button class="level-btn" data-level="1">
-        <div class="level-num">Level 1</div>
-        <div class="level-divider"></div>
-        <strong>Multiply &amp; divide</strong>
-        <span>up to 12 × 12</span>
-      </button>
-      <button class="level-btn" data-level="2">
-        <div class="level-num">Level 2</div>
+        <div class="level-num">72</div>
         <div class="level-divider"></div>
         <strong>Multiply</strong>
-        <span>up to 24 × 24</span>
+        <span>72 questions<br>up to 12 × 12</span>
+      </button>
+      <button class="level-btn" data-level="2">
+        <div class="level-num">144</div>
+        <div class="level-divider"></div>
+        <strong>Multiply</strong>
+        <span>144 questions<br>up to 12 × 12</span>
+      </button>
+      <button class="level-btn" data-level="3">
+        <div class="level-num">Ultimate 1</div>
+        <div class="level-divider"></div>
+        <strong>Multiply &amp; divide</strong>
+        <span>144 questions<br>up to 12 × 12</span>
+      </button>
+      <button class="level-btn" data-level="4">
+        <div class="level-num">Ultimate 2</div>
+        <div class="level-divider"></div>
+        <strong>Multiply</strong>
+        <span>144 questions<br>up to 24 × 24</span>
       </button>
     </div>
-    <p class="meta-note">144 QUESTIONS · 5 MINUTE TARGET</p>
+    <p class="meta-note">5 MINUTE TIME LIMIT</p>
   </div>
 </div>
 
@@ -400,8 +412,6 @@ import { FontLoader }   from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const TOTAL_Q    = 144;
-const TIME_LIMIT = 300;          // seconds
 const SPAWN_Z    = -80;
 const STOP_Z     = -8;
 const SPEED_MIN  = 55;           // units/sec at game start
@@ -460,6 +470,8 @@ window.addEventListener('resize', () => {
 let font        = null;
 let state       = 'loading';
 let level       = 0;
+let totalQ      = 144;
+let timeLimit   = 300;
 let questions   = [];
 let qIdx        = 0;
 let typed       = '';
@@ -494,13 +506,15 @@ function buildPool(maxN, ops, minOne = 1) {
         pool.push({ q: `${a * b} ÷ ${b}`, a });
     }
   }
-  return shuffle(pool).slice(0, TOTAL_Q);
+  return shuffle(pool).slice(0, totalQ);
 }
 
 const LEVEL_CFG = [
-  { label: 'LEVEL 0', max: 12, ops: ['×'] },
-  { label: 'LEVEL 1', max: 12, ops: ['×', '÷'] },
-  { label: 'LEVEL 2', max: 24, ops: ['×'], minOne: 13 },
+  { label: '36',         totalQ: 36,  timeLimit: 300, max: 12, ops: ['×'] },
+  { label: '72',         totalQ: 72,  timeLimit: 300, max: 12, ops: ['×'] },
+  { label: '144',        totalQ: 144, timeLimit: 300, max: 12, ops: ['×'] },
+  { label: 'ULTIMATE 1', totalQ: 144, timeLimit: 300, max: 12, ops: ['×', '÷'] },
+  { label: 'ULTIMATE 2', totalQ: 144, timeLimit: 300, max: 24, ops: ['×'], minOne: 13 },
 ];
 
 // ── 3D text mesh ───────────────────────────────────────────────────────────────
@@ -592,11 +606,11 @@ function fmtTime(sec) {
 }
 
 function updateHUD() {
-  const rem = Math.max(0, TIME_LIMIT - elapsed);
+  const rem = Math.max(0, timeLimit - elapsed);
   const timerEl = $('timer');
   timerEl.textContent = fmtTime(rem);
   timerEl.classList.toggle('urgent', rem < 60);
-  $('progress').innerHTML = `<b>${correctCnt}</b> / ${TOTAL_Q - skippedCnt}`;
+  $('progress').innerHTML = `<b>${correctCnt}</b> / ${totalQ - skippedCnt}`;
 }
 
 function refreshAnswerBox() {
@@ -606,7 +620,7 @@ function refreshAnswerBox() {
 
 // ── Game flow ──────────────────────────────────────────────────────────────────
 function spawnNext() {
-  if (qIdx >= TOTAL_Q) { endGame(); return; }
+  if (qIdx >= totalQ) { endGame(); return; }
   mesh = createMesh(questions[qIdx].q);
   meshBaseY = mesh.position.y;
   meshStopped = false;
@@ -620,6 +634,8 @@ function startGame(lvl) {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   level      = lvl;
+  totalQ     = LEVEL_CFG[lvl].totalQ;
+  timeLimit  = LEVEL_CFG[lvl].timeLimit;
   questions  = buildPool(LEVEL_CFG[lvl].max, LEVEL_CFG[lvl].ops, LEVEL_CFG[lvl].minOne || 1);
   qIdx       = 0;
   correctCnt = 0;
@@ -641,13 +657,13 @@ function endGame() {
   dyingMeshes.forEach(d => { scene.remove(d.m); d.m.geometry.dispose(); d.m.material.dispose(); });
   dyingMeshes = [];
 
-  const success = correctCnt === TOTAL_Q - skippedCnt && elapsed <= TIME_LIMIT;
+  const success = correctCnt === totalQ - skippedCnt && elapsed <= timeLimit;
   const title   = $('results-title');
 
   if (success) {
     title.textContent = 'LEVEL COMPLETE!';
     title.className   = 'success';
-  } else if (elapsed >= TIME_LIMIT) {
+  } else if (elapsed >= timeLimit) {
     title.textContent = "TIME'S UP!";
     title.className   = 'fail';
   } else {
@@ -656,7 +672,7 @@ function endGame() {
   }
 
   $('stats-grid').innerHTML = `
-    <div>Completed</div>      <div class="val">${correctCnt} / ${TOTAL_Q - skippedCnt}</div>
+    <div>Completed</div>      <div class="val">${correctCnt} / ${totalQ - skippedCnt}</div>
     ${skippedCnt > 0 ? `<div>Skipped</div> <div class="val">${skippedCnt}</div>` : ''}
     <div>Wrong attempts</div> <div class="val">${wrongTries}</div>
     <div>Time</div>           <div class="val">${fmtTime(elapsed)}</div>
@@ -666,8 +682,8 @@ function endGame() {
   if (success) {
     verdict.textContent = '✓ Completed in time — well done!';
     verdict.className   = 'result-verdict good';
-  } else if (elapsed >= TIME_LIMIT) {
-    const rem = TOTAL_Q - correctCnt;
+  } else if (elapsed >= timeLimit) {
+    const rem = totalQ - correctCnt;
     verdict.textContent = `× Time ran out — ${rem} question${rem !== 1 ? 's' : ''} remaining`;
     verdict.className   = 'result-verdict bad';
   } else {
@@ -691,7 +707,7 @@ document.addEventListener('keydown', e => {
       mesh.material.emissive.set(0x111122);
     }
     releaseMeshFalling();
-    if (qIdx >= TOTAL_Q) { endGame(); return; }
+    if (qIdx >= totalQ) { endGame(); return; }
     spawnNext();
     updateHUD();
     return;
@@ -717,7 +733,7 @@ document.addEventListener('keydown', e => {
     correctCnt++;
     qIdx++;
     releaseMeshFalling();
-    if (qIdx >= TOTAL_Q) { endGame(); return; }
+    if (qIdx >= totalQ) { endGame(); return; }
     spawnNext();
     updateHUD();
   } else if (!possible) {
@@ -768,7 +784,7 @@ function animate(now) {
   if (state === 'playing') {
     elapsed = (performance.now() - startMs) / 1000;
 
-    if (elapsed >= TIME_LIMIT) {
+    if (elapsed >= timeLimit) {
       endGame();
       renderer.render(scene, camera);
       return;
@@ -778,7 +794,7 @@ function animate(now) {
 
     if (mesh) {
       if (!meshStopped) {
-        const progress = correctCnt / TOTAL_Q;
+        const progress = correctCnt / totalQ;
         const speed    = SPEED_MIN + (SPEED_MAX - SPEED_MIN) * progress;
         mesh.position.z += speed * dt;
         if (mesh.position.z >= STOP_Z) {
